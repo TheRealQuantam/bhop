@@ -4,9 +4,9 @@ __BHOP_CONFIG = 1
 ; Configuration variables, adjust these to taste for your specific project
 
 ; Where should BHOP live?
-.define BHOP_PLAYER_SEGMENT "PRG_8000"
-.define BHOP_RAM_SEGMENT "RAM"
-.define BHOP_ZP_SEGMENT "ZEROPAGE"
+.define BHOP_PLAYER_SEGMENT "BHOP_PRG"
+.define BHOP_RAM_SEGMENT "BHOP_RAM"
+.define BHOP_ZP_SEGMENT "BHOP_ZEROPAGE": zeropage
 
 ; Note: bhop currently requires just 6 bytes of zeropage. ALL of these bytes
 ; are temporary, so feel free to allocate them in your scratch region and
