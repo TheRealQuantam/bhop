@@ -10,17 +10,14 @@ __BHOP_CONFIG = 1
 .define BHOP_RAM_SEGMENT "RAM"
 .define BHOP_ZP_SEGMENT "ZEROPAGE"
 
-.import bhop_music_data
-
-BHOP_MUSIC_BASE = bhop_music_data
-BHOP_DPCM_BANKING = 0
+BHOP_DPCM_BANKING = 1
+BHOP_PATTERN_BANKING = 1
 
 .if ::BHOP_DPCM_BANKING
 .import bhop_apply_dpcm_bank
 BHOP_DPCM_SWITCH_ROUTINE = bhop_apply_dpcm_bank
 .endif
 
-BHOP_PATTERN_BANKING = 0
 
 .if ::BHOP_PATTERN_BANKING
 .import bhop_apply_music_bank
