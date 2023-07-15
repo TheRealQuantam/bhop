@@ -124,7 +124,7 @@ dpcm_active: .byte $00
 
         .segment BHOP_PLAYER_SEGMENT
         ; global
-        .export bhop_init, bhop_play, bhop_mute_channel, bhop_unmute_channel, bhop_set_module_bank
+        .export bhop_init, bhop_play, bhop_mute_channel, bhop_unmute_channel, bhop_mute_channels, bhop_unmute_channels, bhop_set_module_bank
 
 .include "bhop/midi_lut.inc"
 
@@ -2661,6 +2661,56 @@ done:
         lda #($FF - CHANNEL_SUPPRESSED)
         and channel_status, x
         sta channel_status, x
+        rts
+.endproc
+
+; mask of channels with pulse 1 in bit 0, DPCM in bit 4
+.proc bhop_mute_channels
+        sta scratch_byte
+        ldx #$FF
+check_pulse_1:
+        lsr scratch_byte
+        bcc check_pulse_2
+        lda channel_status + PULSE_1_INDEX
+        ora #(CHANNEL_SUPPRESSED)
+        sta channel_status + PULSE_1_INDEX
+        stx shadow_pulse1_freq_hi
+check_pulse_2:
+        lsr scratch_byte
+        bcc check_rest
+        lda channel_status + PULSE_2_INDEX
+        ora #(CHANNEL_SUPPRESSED)
+        sta channel_status + PULSE_2_INDEX
+        stx shadow_pulse2_freq_hi
+check_rest:
+        ldx #TRIANGLE_INDEX
+check_loop:
+        lsr scratch_byte
+        bcc check_next
+        lda channel_status, x
+        ora #(CHANNEL_SUPPRESSED)
+        sta channel_status, x
+check_next:
+        inx
+        cpx #(DPCM_INDEX + 1)
+        bcc check_loop
+        rts
+.endproc
+
+; mask of channels with pulse 1 in bit 0, DPCM in bit 4
+.proc bhop_unmute_channels
+        sta scratch_byte
+        ldx #PULSE_1_INDEX
+check_loop:
+        lsr scratch_byte
+        bcc check_next
+        lda channel_status, x
+        and #<~(CHANNEL_SUPPRESSED)
+        sta channel_status, x
+check_next:
+        inx
+        cpx #(DPCM_INDEX + 1)
+        bcc check_loop
         rts
 .endproc
 
