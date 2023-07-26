@@ -121,6 +121,7 @@ effect_dac_buffer: .byte $00
 
         .segment BHOP_PLAYER_SEGMENT
         ; global
+		.export tempo
         .export bhop_init, bhop_play, bhop_mute_channel, bhop_unmute_channel, bhop_mute_channels, bhop_unmute_channels, bhop_set_module_bank
 
 .include "bhop/midi_lut.inc"
