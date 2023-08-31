@@ -117,10 +117,13 @@ effect_dpcm_offset: .byte $00
 ; Zxx
 effect_dac_buffer: .byte $00
 
+global_attenuation: .byte $00
+.export global_attenuation
 
         .segment BHOP_PLAYER_SEGMENT
         ; global
-        .export bhop_init, bhop_play, bhop_mute_channel, bhop_unmute_channel, bhop_set_module_bank
+		.export tempo
+        .export bhop_init, bhop_play, bhop_mute_channel, bhop_unmute_channel, bhop_mute_channels, bhop_unmute_channels, bhop_set_module_bank
 
 .include "bhop/midi_lut.inc"
 
@@ -2022,6 +2025,33 @@ tick_pulse1:
         ora channel_instrument_volume + PULSE_1_INDEX
         tax
         lda volume_table, x
+
+        ; dungeon-game specific: apply global fade here
+        beq pulse1_nofix
+		
+.if !::MUL_GLOBAL_VOLUME
+        sec
+        sbc global_attenuation
+        bmi pulse1_fix
+        beq pulse1_fix
+        jmp pulse1_nofix
+.else
+        asl a
+		asl a
+		asl a
+		asl a
+		ora #$f
+		eor global_attenuation
+		tax
+		lda volume_table, x
+		
+		bne pulse1_nofix
+.endif
+
+pulse1_fix:
+        lda #1
+pulse1_nofix:
+
         ora #%00110000 ; disable length counter and envelope
         ora scratch_byte
         sta $4000
@@ -2079,6 +2109,33 @@ tick_pulse2:
         ora channel_instrument_volume + PULSE_2_INDEX
         tax
         lda volume_table, x
+
+        ; dungeon-game specific: apply global fade here
+        beq pulse2_nofix
+		
+.if !::MUL_GLOBAL_VOLUME
+        sec
+        sbc global_attenuation
+        bmi pulse2_fix
+        beq pulse2_fix
+        jmp pulse2_nofix
+.else
+        asl a
+		asl a
+		asl a
+		asl a
+		ora #$f
+		eor global_attenuation
+		tax
+		lda volume_table, x
+		
+		bne pulse2_nofix
+.endif
+
+pulse2_fix:
+        lda #1
+pulse2_nofix:
+
         ora #%00110000 ; disable length counter and envelope
         ora scratch_byte
         sta $4004
@@ -2127,6 +2184,12 @@ tick_triangle:
         ldx channel_instrument_volume + TRIANGLE_INDEX
         beq triangle_muted
 
+        ; dungeon-game specific
+        ; mute the triangle above a global attenuation of 4ish
+        lda global_attenuation
+        cmp #TRIANGLE_ATTENUATION_THRESHOLD
+        bcs triangle_muted
+
         lda #$FF
         sta $4008 ; timers to max
 
@@ -2158,6 +2221,32 @@ tick_noise:
         ora channel_instrument_volume + NOISE_INDEX
         tax
         lda volume_table, x
+
+        ; dungeon-game specific: apply global fade here
+        beq noise_nofix
+		
+.if !::MUL_GLOBAL_VOLUME
+        sec
+        sbc global_attenuation
+        bmi noise_fix
+        beq noise_fix
+        jmp noise_nofix
+.else
+        asl a
+		asl a
+		asl a
+		asl a
+		ora #$f
+		eor global_attenuation
+		tax
+		lda volume_table, x
+		
+		bne noise_nofix
+.endif
+
+noise_fix:
+        lda #1
+noise_nofix:
 
         ora #%00110000 ; disable length counter and envelope
         sta $400C
@@ -2273,6 +2362,33 @@ tick_pulse1:
         ora channel_instrument_volume + MMC5_PULSE_1_INDEX
         tax
         lda volume_table, x
+
+        ; dungeon-game specific: apply global fade here
+        beq pulse1_nofix
+		
+.if !::MUL_GLOBAL_VOLUME
+        sec
+        sbc global_attenuation
+        bmi pulse1_fix
+        beq pulse1_fix
+        jmp pulse1_nofix
+.else
+        asl a
+		asl a
+		asl a
+		asl a
+		ora #$f
+		eor global_attenuation
+		tax
+		lda volume_table, x
+		
+		bne pulse1_nofix
+.endif
+
+pulse1_fix:
+        lda #1
+pulse1_nofix:
+
         ora #%00110000 ; disable length counter and envelope
         ora scratch_byte
         sta $5000
@@ -2326,6 +2442,33 @@ tick_pulse2:
         ora channel_instrument_volume + MMC5_PULSE_2_INDEX
         tax
         lda volume_table, x
+
+        ; dungeon-game specific: apply global fade here
+        beq pulse2_nofix
+		
+.if !::MUL_GLOBAL_VOLUME
+        sec
+        sbc global_attenuation
+        bmi pulse2_fix
+        beq pulse2_fix
+        jmp pulse2_nofix
+.else
+        asl a
+		asl a
+		asl a
+		asl a
+		ora #$f
+		eor global_attenuation
+		tax
+		lda volume_table, x
+		
+		bne pulse2_nofix
+.endif
+
+pulse2_fix:
+        lda #1
+pulse2_nofix:
+
         ora #%00110000 ; disable length counter and envelope
         ora scratch_byte
         sta $5004
@@ -2394,6 +2537,11 @@ next:
         lda dpcm_status
         and #DPCM_ENABLED
         jeq done
+
+        ; dungeon-game specific
+        lda global_attenuation
+        cmp #DPCM_ATTENUATION_THRESHOLD
+        bcs dpcm_muted
 
 ; make arrangements to write to the specific registers
         lda channel_status + DPCM_INDEX
@@ -2611,6 +2759,17 @@ safe_to_continue:
         lda volume_table, x
         beq zsaw_muted
 
+        ; dungeon-game specific: apply global fade here
+        beq saw_nofix
+        sec
+        sbc global_attenuation
+        bmi saw_fix
+        beq saw_fix
+        jmp saw_nofix
+saw_fix:
+        lda #1
+saw_nofix:
+
         ; New approach: use the tracked volume to index into our N163 equivalence lookup table
         ; First we need to pick which table, so do that based on the timbre
         sta scratch_byte
@@ -2682,6 +2841,56 @@ done:
         lda #($FF - CHANNEL_SUPPRESSED)
         and channel_status, x
         sta channel_status, x
+        rts
+.endproc
+
+; mask of channels with pulse 1 in bit 0, DPCM in bit 4
+.proc bhop_mute_channels
+        sta scratch_byte
+        ldx #$FF
+check_pulse_1:
+        lsr scratch_byte
+        bcc check_pulse_2
+        lda channel_status + PULSE_1_INDEX
+        ora #(CHANNEL_SUPPRESSED)
+        sta channel_status + PULSE_1_INDEX
+        stx shadow_pulse1_freq_hi
+check_pulse_2:
+        lsr scratch_byte
+        bcc check_rest
+        lda channel_status + PULSE_2_INDEX
+        ora #(CHANNEL_SUPPRESSED)
+        sta channel_status + PULSE_2_INDEX
+        stx shadow_pulse2_freq_hi
+check_rest:
+        ldx #TRIANGLE_INDEX
+check_loop:
+        lsr scratch_byte
+        bcc check_next
+        lda channel_status, x
+        ora #(CHANNEL_SUPPRESSED)
+        sta channel_status, x
+check_next:
+        inx
+        cpx #(DPCM_INDEX + 1)
+        bcc check_loop
+        rts
+.endproc
+
+; mask of channels with pulse 1 in bit 0, DPCM in bit 4
+.proc bhop_unmute_channels
+        sta scratch_byte
+        ldx #PULSE_1_INDEX
+check_loop:
+        lsr scratch_byte
+        bcc check_next
+        lda channel_status, x
+        and #<~(CHANNEL_SUPPRESSED)
+        sta channel_status, x
+check_next:
+        inx
+        cpx #(DPCM_INDEX + 1)
+        bcc check_loop
         rts
 .endproc
 

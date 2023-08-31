@@ -4,9 +4,9 @@ __BHOP_CONFIG = 1
 ; Configuration variables, adjust these to taste for your specific project
 
 ; Where should BHOP live?
-.define BHOP_PLAYER_SEGMENT "PRG_8000"
-.define BHOP_RAM_SEGMENT "RAM"
-.define BHOP_ZP_SEGMENT "ZEROPAGE"
+.define BHOP_PLAYER_SEGMENT "BHOP_PRG"
+.define BHOP_RAM_SEGMENT "BHOP_RAM"
+.define BHOP_ZP_SEGMENT "BHOP_ZEROPAGE": zeropage
 
 ; Note: bhop currently requires just 6 bytes of zeropage. ALL of these bytes
 ; are temporary, so feel free to allocate them in your scratch region and
@@ -18,6 +18,10 @@ __BHOP_CONFIG = 1
 ; place it in memory here. Ensure this memory is paged in
 ; during bhop_init and bhop_play.
 BHOP_MUSIC_BASE = bhop_music_data
+
+MUL_GLOBAL_VOLUME = 1
+TRIANGLE_ATTENUATION_THRESHOLD = $a
+DPCM_ATTENUATION_THRESHOLD = $8
 
 ; Banking support. Disabled by default, as the relevant
 ; mapper code is project specific.
@@ -43,6 +47,11 @@ BHOP_PATTERN_SWITCH_ROUTINE = bhop_apply_music_bank
 ; Toggle the following flags to enable various expansion channel types
 
 BHOP_ZSAW_ENABLED = 0
+
+.if ::MMC = 5
+BHOP_MMC5_ENABLED = 1
+.else
 BHOP_MMC5_ENABLED = 0
+.endif
 
 .endif ; __BHOP_CONFIG
