@@ -56,6 +56,7 @@ channel_pattern_ptr_high: .res BHOP::NUM_CHANNELS
 channel_pattern_bank: .res BHOP::NUM_CHANNELS
 .endif
 channel_status: .res BHOP::NUM_CHANNELS
+channel_rstatus: .res BHOP::NUM_CHANNELS
 channel_global_duration: .res BHOP::NUM_CHANNELS
 channel_row_delay_counter: .res BHOP::NUM_CHANNELS
 channel_base_note: .res BHOP::NUM_CHANNELS
@@ -783,16 +784,16 @@ write_relative_frequency:
 portamento_active:
         ; if we have a delayed note cut queued up, cancel it. A new note takes priority,
         ; and we don't want the unexpired cut to silence it inappropriately.
-        lda channel_status, x
-        and #CHANNEL_FRESH_DELAYED_CUT
+        lda channel_rstatus, x
+        and #ROW_FRESH_DELAYED_CUT
         bne preserve_fresh_cut
         lda #0
         sta effect_cut_delay, x
 preserve_fresh_cut:
 .if ::BHOP_DELAYED_RELEASE_ENABLED
         ; ditto with delayed release
-        lda channel_status, x
-        and #CHANNEL_FRESH_DELAYED_RELEASE
+        lda channel_rstatus, x
+        and #ROW_FRESH_DELAYED_RELEASE
         bne preserve_release_delay
         lda #0
         sta effect_release_delay, x
@@ -800,15 +801,25 @@ preserve_release_delay:
 .endif
         ; finally, set the channel status as triggered
         ; (this will be cleared after effects are processed)
-        lda channel_status, x
-        ora #CHANNEL_TRIGGERED
+        lda channel_rstatus, x
+        ora #ROW_TRIGGERED
+        sta channel_rstatus, x
         ; also, un-mute  and un-release the channel
+        lda channel_status, x
         and #($FF - (CHANNEL_MUTED | CHANNEL_RELEASED))
         sta channel_status, x
         cpx #DPCM_INDEX
         bne skip_sample_trigger
         jsr trigger_sample
 skip_sample_trigger:
+        lda channel_rstatus, x
+        and #ROW_HOLD_INSTRUMENT
+        beq init_instrument
+        lda channel_rstatus, x
+        and #($FF - ROW_TRIGGERED)
+        sta channel_rstatus, x
+        bne done_with_bytecode
+init_instrument:
         ; reset the instrument envelopes to the beginning
         jsr reset_instrument ; clobbers a, y
         ; reset the instrument volume to 0xF (if this instrument has a volume
@@ -1055,8 +1066,8 @@ done:
 .endproc
 
 .proc fix_noise_freq
-        lda channel_status + NOISE_INDEX
-        and #CHANNEL_TRIGGERED
+        lda channel_rstatus + NOISE_INDEX
+        and #ROW_TRIGGERED
         beq done
         lda channel_base_note + NOISE_INDEX
         sta channel_base_frequency_low + NOISE_INDEX
@@ -1099,7 +1110,6 @@ done_with_note_delay:
         sta effect_release_delay, x
 .endif
         lda channel_status, x
-        and #($FF - CHANNEL_FRESH_DELAYED_CUT - CHANNEL_FRESH_DELAYED_RELEASE)
         ora #CHANNEL_MUTED
         sta channel_status, x
         jne done_with_delays
@@ -1111,7 +1121,6 @@ done_with_cut_delay:
         bne done_with_delays
         ; note release
         lda channel_status, x
-        and #($FF - CHANNEL_FRESH_DELAYED_RELEASE)
         ora #CHANNEL_RELEASED
         sta channel_status, x
 .if ::BHOP_PATTERN_BANKING
@@ -1614,8 +1623,8 @@ arp_absolute:
         jmp apply_arp
 arp_relative:
         ; were we just triggered? if so, reset the relative offset
-        lda channel_status, x
-        and #CHANNEL_TRIGGERED
+        lda channel_rstatus, x
+        and #ROW_TRIGGERED
         beq not_triggered
         lda #0
         sta channel_relative_note_offset, x
@@ -1845,8 +1854,8 @@ arp_absolute:
         jmp apply_arp
 arp_relative:
         ; were we just triggered? if so, reset the relative offset
-        lda channel_status, x
-        and #CHANNEL_TRIGGERED
+        lda channel_rstatus, x
+        and #ROW_TRIGGERED
         beq not_triggered
         lda #0
         sta channel_relative_note_offset, x
@@ -2143,8 +2152,8 @@ pulse1_nofix:
         sta $4002
 
         ; If we triggered this frame, write unconditionally
-        lda channel_status + PULSE_1_INDEX
-        and #CHANNEL_TRIGGERED
+        lda channel_rstatus + PULSE_1_INDEX
+        and #ROW_TRIGGERED
         bne write_pulse1
 
         ; otherwise, to avoid resetting the sequence counter, only
@@ -2227,8 +2236,8 @@ pulse2_nofix:
         sta $4006
 
         ; If we triggered this frame, write unconditionally
-        lda channel_status + PULSE_2_INDEX
-        and #CHANNEL_TRIGGERED
+        lda channel_rstatus + PULSE_2_INDEX
+        and #ROW_TRIGGERED
         bne write_pulse2
 
         ; otherwise, to avoid resetting the sequence counter, only
@@ -2371,43 +2380,6 @@ tick_dpcm:
         .endif
 
 cleanup:
-        ; clear the triggered flag from every instrument
-        lda channel_status + PULSE_1_INDEX
-        and #($FF - CHANNEL_TRIGGERED)
-        sta channel_status + PULSE_1_INDEX
-
-        lda channel_status + PULSE_2_INDEX
-        and #($FF - CHANNEL_TRIGGERED)
-        sta channel_status + PULSE_2_INDEX
-
-        lda channel_status + TRIANGLE_INDEX
-        and #($FF - CHANNEL_TRIGGERED)
-        sta channel_status + TRIANGLE_INDEX
-
-        lda channel_status + NOISE_INDEX
-        and #($FF - CHANNEL_TRIGGERED)
-        sta channel_status + NOISE_INDEX
-
-        .if ::BHOP_ZSAW_ENABLED
-        lda channel_status + ZSAW_INDEX
-        and #($FF - CHANNEL_TRIGGERED)
-        sta channel_status + ZSAW_INDEX
-        .endif
-
-        .if ::BHOP_MMC5_ENABLED
-        lda channel_status + MMC5_PULSE_1_INDEX
-        and #($FF - CHANNEL_TRIGGERED)
-        sta channel_status + MMC5_PULSE_1_INDEX
-
-        lda channel_status + MMC5_PULSE_2_INDEX
-        and #($FF - CHANNEL_TRIGGERED)
-        sta channel_status + MMC5_PULSE_2_INDEX
-        .endif
-
-        lda channel_status + DPCM_INDEX
-        and #($FF - CHANNEL_TRIGGERED)
-        sta channel_status + DPCM_INDEX
-
         rts
 .endproc
 
@@ -2476,8 +2448,8 @@ pulse1_nofix:
         sta $5002
 
         ; If we triggered this frame, write unconditionally
-        lda channel_status + MMC5_PULSE_1_INDEX
-        and #CHANNEL_TRIGGERED
+        lda channel_rstatus + MMC5_PULSE_1_INDEX
+        and #ROW_TRIGGERED
         bne write_pulse1
 
         ; otherwise, to avoid resetting the sequence counter, only
@@ -2556,8 +2528,8 @@ pulse2_nofix:
         sta $5006
 
         ; If we triggered this frame, write unconditionally
-        lda channel_status + MMC5_PULSE_2_INDEX
-        and #CHANNEL_TRIGGERED
+        lda channel_rstatus + MMC5_PULSE_2_INDEX
+        and #ROW_TRIGGERED
         bne write_pulse2
 
         ; otherwise, to avoid resetting the sequence counter, only
@@ -2601,9 +2573,9 @@ done_with_mmc5:
         lda dpcm_status
         ora #DPCM_ENABLED
         sta dpcm_status
-        lda channel_status + DPCM_INDEX
-        ora #CHANNEL_TRIGGERED
-        sta channel_status + DPCM_INDEX
+        lda channel_rstatus + DPCM_INDEX
+        ora #ROW_TRIGGERED
+        sta channel_rstatus + DPCM_INDEX
 next:
 
 ; handle note cut and note release
@@ -2623,8 +2595,8 @@ next:
         jcs dpcm_muted
 
 ; make arrangements to write to the specific registers
-        lda channel_status + DPCM_INDEX
-        and #CHANNEL_TRIGGERED
+        lda channel_rstatus + DPCM_INDEX
+        and #ROW_TRIGGERED
         jeq check_for_inactive
 
         .if ::BHOP_ZSAW_ENABLED
@@ -2777,9 +2749,9 @@ check_for_inactive:
         lda dpcm_status
         ora #DPCM_ENABLED
         sta dpcm_status
-        lda channel_status + DPCM_INDEX
-        ora #CHANNEL_TRIGGERED
-        sta channel_status + DPCM_INDEX
+        lda channel_rstatus + DPCM_INDEX
+        ora #ROW_TRIGGERED
+        sta channel_rstatus + DPCM_INDEX
         jsr queue_sample
         rts
 .endproc
@@ -2887,6 +2859,12 @@ skip:
         sta current_music_bank
         jsr BHOP_PATTERN_SWITCH_ROUTINE
 .endif
+
+        ; clear the volatile status
+        lda #0
+.repeat BHOP::NUM_CHANNELS, i
+        sta channel_rstatus + i
+.endrepeat
 
         jsr tick_frame_counter
         jsr tick_envelopes_and_effects
