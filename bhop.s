@@ -876,10 +876,14 @@ preserve_fresh_cut:
         sta effect_release_delay, x
 preserve_release_delay:
 .endif
-        ; finally, set the channel status as triggered
-        ; (this will be cleared after effects are processed)
-        lda channel_rstatus, x
+        ; finally, set the channel status as triggered and possibly unmuted
+		lda channel_status, x
+		and #CHANNEL_MUTED
+		beq was_playing
+		lda #ROW_UNMUTED
+was_playing:
         ora #ROW_TRIGGERED
+		ora channel_rstatus, x
         sta channel_rstatus, x
         ; also, un-mute  and un-release the channel
         lda channel_status, x
@@ -1988,7 +1992,7 @@ tick_pulse1:
 
         ; If we triggered this frame, write unconditionally
         lda channel_rstatus + PULSE_1_INDEX
-        and #ROW_TRIGGERED
+        and #ROW_UNMUTED
         bne write_pulse1
 
         ; otherwise, to avoid resetting the sequence counter, only
@@ -2045,7 +2049,7 @@ tick_pulse2:
 
         ; If we triggered this frame, write unconditionally
         lda channel_rstatus + PULSE_2_INDEX
-        and #ROW_TRIGGERED
+        and #ROW_UNMUTED
         bne write_pulse2
 
         ; otherwise, to avoid resetting the sequence counter, only
