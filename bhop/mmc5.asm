@@ -34,7 +34,7 @@ tick_pulse1:
         lda channel_detuned_frequency_low + MMC5_PULSE_1_INDEX
         sta $5002
 
-        ; If we triggered this frame, write unconditionally
+        ; If we unmuted this frame, write unconditionally
         lda channel_rstatus + MMC5_PULSE_1_INDEX
         and #ROW_UNMUTED
         bne write_pulse1
@@ -87,7 +87,7 @@ tick_pulse2:
         lda channel_detuned_frequency_low + MMC5_PULSE_2_INDEX
         sta $5006
 
-        ; If we triggered this frame, write unconditionally
+        ; If we unmuted this frame, write unconditionally
         lda channel_rstatus + MMC5_PULSE_2_INDEX
         and #ROW_UNMUTED
         bne write_pulse2

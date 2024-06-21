@@ -877,13 +877,13 @@ preserve_fresh_cut:
 preserve_release_delay:
 .endif
         ; finally, set the channel status as triggered and possibly unmuted
-		lda channel_status, x
-		and #CHANNEL_MUTED
-		beq was_playing
-		lda #ROW_UNMUTED
+        lda channel_status, x
+        and #CHANNEL_MUTED
+        beq was_playing
+        lda #ROW_UNMUTED
 was_playing:
         ora #ROW_TRIGGERED
-		ora channel_rstatus, x
+        ora channel_rstatus, x
         sta channel_rstatus, x
         ; also, un-mute  and un-release the channel
         lda channel_status, x
@@ -1990,7 +1990,7 @@ tick_pulse1:
         lda channel_detuned_frequency_low + PULSE_1_INDEX
         sta $4002
 
-        ; If we triggered this frame, write unconditionally
+        ; If we unmuted this frame, write unconditionally
         lda channel_rstatus + PULSE_1_INDEX
         and #ROW_UNMUTED
         bne write_pulse1
@@ -2047,7 +2047,7 @@ tick_pulse2:
         lda channel_detuned_frequency_low + PULSE_2_INDEX
         sta $4006
 
-        ; If we triggered this frame, write unconditionally
+        ; If we unmuted this frame, write unconditionally
         lda channel_rstatus + PULSE_2_INDEX
         and #ROW_UNMUTED
         bne write_pulse2
