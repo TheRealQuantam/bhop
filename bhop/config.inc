@@ -12,7 +12,7 @@ __BHOP_CONFIG = 1
 ; are temporary, so feel free to allocate them in your scratch region and
 ; clobber them freely between calls to bhop_play.
 
-MUL_GLOBAL_VOLUME = 1
+MUL_GLOBAL_VOLUME = 0
 TRIANGLE_ATTENUATION_THRESHOLD = $a
 DPCM_ATTENUATION_THRESHOLD = $8
 

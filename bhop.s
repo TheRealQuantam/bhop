@@ -2371,7 +2371,7 @@ noise_muted:
         sta $400C
 
 tick_dpcm:
-        jsr play_dpcm_samples
+        ;jsr play_dpcm_samples
         .if ::BHOP_ZSAW_ENABLED
         jsr play_zsaw
         .endif
