@@ -19,7 +19,7 @@ pattern_ptr: .word $0000
 channel_index: .byte $00
 scratch_byte: .byte $00
 
-        .segment BHOP_RAM_SEGMENT
+        .segment BHOP_RAM_SEGMENT2
 music_header_ptr: .word $0000
 tempo_counter: .word $0000
 tempo_cmp: .word $0000
@@ -58,6 +58,8 @@ channel_pattern_bank: .res BHOP::NUM_CHANNELS
 channel_status: .res BHOP::NUM_CHANNELS
 channel_rstatus: .res BHOP::NUM_CHANNELS
 channel_global_duration: .res BHOP::NUM_CHANNELS
+
+        .segment BHOP_RAM_SEGMENT
 channel_row_delay_counter: .res BHOP::NUM_CHANNELS
 channel_base_note: .res BHOP::NUM_CHANNELS
 channel_relative_note_offset:  .res BHOP::NUM_CHANNELS
