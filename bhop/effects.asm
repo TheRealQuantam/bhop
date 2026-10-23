@@ -1,4 +1,4 @@
-        .segment BHOP_RAM_SEGMENT
+        .segment BHOP_RAM_SEGMENT2
 channel_vibrato_settings: .res BHOP::NUM_CHANNELS
 channel_vibrato_accumulator: .res BHOP::NUM_CHANNELS
 channel_tuning: .res BHOP::NUM_CHANNELS

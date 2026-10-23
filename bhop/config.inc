@@ -6,6 +6,7 @@ __BHOP_CONFIG = 1
 ; Where should BHOP live?
 .define BHOP_PLAYER_SEGMENT "BHOP_PRG"
 .define BHOP_RAM_SEGMENT "BHOP_RAM"
+.define BHOP_RAM_SEGMENT2 "BHOP_RAM2"
 .define BHOP_ZP_SEGMENT "BHOP_ZEROPAGE": zeropage
 
 ; Note: bhop currently requires just 6 bytes of zeropage. ALL of these bytes
